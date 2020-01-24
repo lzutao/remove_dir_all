@@ -23,8 +23,6 @@ struct RmdirContext<'a> {
 /// Reliably removes a directory and all of its children.
 ///
 /// ```rust
-/// extern crate remove_dir_all;
-///
 /// use std::fs;
 /// use remove_dir_all::*;
 ///
@@ -45,7 +43,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     //
     // To handle files with names like `CON` and `morse .. .`,  and when a
     // directory structure is so deep it needs long path names the path is first
-    // converted to a `//?/`-path with `get_path()`.
+    // converted to a `\\?\`-path with `get_path()`.
     //
     // To make sure we don't leave a moved file laying around if the process
     // crashes before we can delete the file, we do all operations on an file
@@ -124,9 +122,9 @@ fn remove_item(path: &Path, ctx: &mut RmdirContext<'_>) -> io::Result<()> {
     let mut opts = OpenOptions::new();
     opts.access_mode(DELETE);
     opts.custom_flags(
-        FILE_FLAG_BACKUP_SEMANTICS | // delete directory
-                        FILE_FLAG_OPEN_REPARSE_POINT | // delete symlink
-                        FILE_FLAG_DELETE_ON_CLOSE,
+        FILE_FLAG_BACKUP_SEMANTICS      // delete directory
+        | FILE_FLAG_OPEN_REPARSE_POINT  // delete symlink
+        | FILE_FLAG_DELETE_ON_CLOSE,
     );
     let file = opts.open(path)?;
     move_item(&file, ctx)?;
