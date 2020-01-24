@@ -174,7 +174,15 @@ fn rename(file: &File, new: &Path, replace: bool) -> io::Result<()> {
     #[cfg(target_pointer_width = "64")]
     const STRUCT_SIZE: usize = 20;
 
-    // FIXME: check for internal NULs in 'new'
+    // Check for internal NULs in 'new'
+    let new_u16s = new.as_os_str().encode_wide();
+    if new_u16s.by_ref().any(|&u| u == 0) {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Internal NULL in `new` path",
+        ));
+    }
+
     let mut data: Vec<u16> = iter::repeat(0u16)
         .take(STRUCT_SIZE / 2)
         .chain(new.as_os_str().encode_wide())
