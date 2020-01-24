@@ -1,0 +1,79 @@
+name: Rust
+
+on:
+  push:
+    branches:
+      - 'master'
+      - '!gh-pages'
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      CRATE_NAME: remove_dir_all
+      MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
+      # RUSTFLAGS: -Ctarget-feature=+crt-static
+      RUST_BACKTRACE: 1
+    strategy:
+      matrix:
+        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc, x86_64-pc-windows-gnu, i686-pc-windows-gnu, aarch64-pc-windows-msvc]
+        rust: [stable, nightly]
+        include:
+          - target: x86_64-pc-windows-gnu
+            archive: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
+            mingw_dir: mingw64
+          - target: i686-pc-windows-gnu
+            archive: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+            mingw_dir: mingw32
+    steps:
+      - uses: actions/checkout@v2
+      - name: Check out MinGW toolchain
+        if: matrix.mingw_dir
+        run: |
+          set -x
+          curl -sSf -O "${MINGW_URL}/${{ matrix.archive }}"
+          7z x -y "${{ matrix.archive }}" -o/c/mingw
+          rm "${{ matrix.archive }}"
+          echo "##[add-path]C:\mingw\${{ matrix.mingw_dir }}\bin"
+        shell: bash
+      - name: Install Rust toolchain
+        shell: bash
+        run: |
+          rustup set default-host x86_64-pc-windows-msvc
+          rustup set profile minimal
+          rustup default ${{ matrix.rust }}
+          rustup target add ${{ matrix.target }}
+      - run: cargo build --target ${{ matrix.target }}
+      - run: cargo build --target ${{ matrix.target }} --all-targets
+      - if: matrix.target != 'aarch64-pc-windows-msvc'
+        run: cargo test --target ${{ matrix.target }}
+
+  rustfmt:
+    name: Formatting check and build check on Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          rustup default stable
+          rustup component add rustfmt
+      - run: cargo fmt -- --check
+      - run: cargo check --all-targets --all
+
+  clippy:
+    runs-on: windows-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust toolchain
+        shell: bash
+        run: |
+          rustup set default-host x86_64-pc-windows-msvc
+          rustup set profile minimal
+          rustup default beta
+      - run: rustup component add clippy
+      - run: |
+          cargo check --all --all-targets
+          git ls-files '*.rs' | xargs touch
+        shell: bash
+      - run: cargo clippy --all --all-targets
