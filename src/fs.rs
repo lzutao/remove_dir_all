@@ -176,7 +176,7 @@ fn rename(file: &File, new: &Path, replace: bool) -> io::Result<()> {
 
     // Check for internal NULs in 'new'
     let new_u16s = new.as_os_str().encode_wide();
-    if new_u16s.by_ref().any(|&u| u == 0) {
+    if new_u16s.clone().any(|u| u == 0) {
         return Err(io::Error::new(
             io::ErrorKind::Other,
             "Internal NULL in `new` path",
@@ -185,9 +185,9 @@ fn rename(file: &File, new: &Path, replace: bool) -> io::Result<()> {
 
     let mut data: Vec<u16> = iter::repeat(0u16)
         .take(STRUCT_SIZE / 2)
-        .chain(new.as_os_str().encode_wide())
+        .chain(new_u16s)
+        .chain(Some(0))
         .collect();
-    data.push(0);
     let size = data.len() * 2;
 
     unsafe {
@@ -199,18 +199,18 @@ fn rename(file: &File, new: &Path, replace: bool) -> io::Result<()> {
         (*info).ReplaceIfExists = if replace { -1 } else { FALSE };
         (*info).RootDirectory = ptr::null_mut();
         (*info).FileNameLength = (size - STRUCT_SIZE) as DWORD;
-        let result = SetFileInformationByHandle(
+    }
+
+    match unsafe {
+        SetFileInformationByHandle(
             file.as_raw_handle(),
             FileRenameInfo,
             data.as_mut_ptr() as *mut _ as *mut _,
             size as DWORD,
-        );
-
-        if result == 0 {
-            Err(io::Error::last_os_error())
-        } else {
-            Ok(())
-        }
+        )
+    } {
+        0 => Err(io::Error::last_os_error()),
+        _ => Ok(()),
     }
 }
 
