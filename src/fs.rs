@@ -28,10 +28,8 @@ struct RmdirContext<'a> {
 /// use std::fs;
 /// use remove_dir_all::*;
 ///
-/// fn main() {
-///     fs::create_dir("./temp/").unwrap();
-///     remove_dir_all("./temp/").unwrap();
-/// }
+/// fs::create_dir("./temp/").unwrap();
+/// remove_dir_all("./temp/").unwrap();
 /// ```
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     // On Windows it is not enough to just recursively remove the contents of a
@@ -114,7 +112,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     }
 }
 
-fn remove_item(path: &Path, ctx: &mut RmdirContext) -> io::Result<()> {
+fn remove_item(path: &Path, ctx: &mut RmdirContext<'_>) -> io::Result<()> {
     if ctx.readonly {
         // remove read-only permission
         let mut permissions = path.metadata()?.permissions();
@@ -149,7 +147,7 @@ fn remove_item(path: &Path, ctx: &mut RmdirContext) -> io::Result<()> {
     Ok(())
 }
 
-fn move_item(file: &File, ctx: &mut RmdirContext) -> io::Result<()> {
+fn move_item(file: &File, ctx: &mut RmdirContext<'_>) -> io::Result<()> {
     let mut tmpname = ctx.base_dir.join(format! {"rm-{}", ctx.counter});
     ctx.counter += 1;
 
@@ -221,7 +219,7 @@ fn get_path(f: &File) -> io::Result<PathBuf> {
     )
 }
 
-fn remove_dir_all_recursive(path: &Path, ctx: &mut RmdirContext) -> io::Result<()> {
+fn remove_dir_all_recursive(path: &Path, ctx: &mut RmdirContext<'_>) -> io::Result<()> {
     let dir_readonly = ctx.readonly;
     for child in fs::read_dir(path)? {
         let child = child?;
@@ -230,7 +228,7 @@ fn remove_dir_all_recursive(path: &Path, ctx: &mut RmdirContext) -> io::Result<(
         if child_type.is_dir() {
             remove_dir_all_recursive(&child.path(), ctx)?;
         } else {
-            remove_item(&child.path().as_ref(), ctx)?;
+            remove_item(&child.path(), ctx)?;
         }
     }
     ctx.readonly = dir_readonly;

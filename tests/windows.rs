@@ -1,6 +1,5 @@
 #![cfg(windows)]
-
-extern crate remove_dir_all;
+#![warn(rust_2018_idioms)]
 
 use remove_dir_all::remove_dir_all;
 use std::fs::{self, File};
