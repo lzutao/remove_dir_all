@@ -116,7 +116,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
 fn remove_item(path: &Path, ctx: &mut RmdirContext) -> io::Result<()> {
     if ctx.readonly {
-        // remove read-only permision
+        // remove read-only permission
         let mut permissions = path.metadata()?.permissions();
         permissions.set_readonly(false);
 
